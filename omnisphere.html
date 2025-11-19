@@ -1,299 +1,382 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum Magnetic - Three.js</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quantum Black Hole - Final</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
-            font-family: sans-serif;
-        }
-        canvas { display: block; }
-        #ui {
-            position: absolute;
-            bottom: 20px; left: 20px;
-            color: rgba(255, 255, 255, 0.5);
-            pointer-events: none;
-            user-select: none;
-            text-shadow: 0 0 10px rgba(255,255,255,0.2);
-        }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        font-family: sans-serif;
+        cursor: none; /* Hide default cursor */
+      }
+      canvas {
+        display: block;
+      }
+      #ui {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: rgba(255, 255, 255, 0.5);
+        pointer-events: none;
+        user-select: none;
+        z-index: 10;
+      }
+      /* Visual Cursor */
+      #bh-cursor {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 1), inset 0 0 20px rgba(0, 0, 0, 1);
+        background: rgba(0, 0, 0, 0.3); /* Slight dark tint */
+        z-index: 100;
+        transition: width 0.1s, height 0.1s;
+      }
+      #bh-cursor.active {
+        width: 60px;
+        height: 60px;
+        border-color: rgba(50, 50, 50, 0.5);
+      }
     </style>
-</head>
-<body>
-
-    <div id="ui">Hover to Attract • Scroll to Zoom • Drag to Rotate</div>
+  </head>
+  <body>
+    <div id="bh-cursor"></div>
+    <div id="ui">Hover to Activate Black Hole • Scroll to Zoom</div>
 
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
         }
+      }
     </script>
 
     <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+      import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+      import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+      import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
-        // --- SCENE SETUP ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100);
-        camera.position.set(0, 0.5, 4);
+      // --- CURSOR ---
+      const cursorEl = document.getElementById("bh-cursor");
+      document.addEventListener("mousemove", (e) => {
+        cursorEl.style.left = e.clientX + "px";
+        cursorEl.style.top = e.clientY + "px";
+        cursorEl.classList.add("active");
+      });
+      document.addEventListener("mouseleave", () => {
+        cursorEl.classList.remove("active");
+      });
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.toneMapping = THREE.ReinhardToneMapping;
-        document.body.appendChild(renderer.domElement);
+      // --- SCENE ---
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.01,
+        100
+      );
+      camera.position.set(0, 0.5, 4);
 
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.enablePan = false;
-        controls.minDistance = 0.1;
-        controls.maxDistance = 15;
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ReinhardToneMapping;
+      document.body.appendChild(renderer.domElement);
 
-        // --- MOUSE RAYCASTER SETUP (For 3D Attraction) ---
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2(9999, 9999); // Start off-screen
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Mathematical plane at Z=0
-        const target3D = new THREE.Vector3(); // This will hold the 3D mouse position
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.enablePan = false;
+      controls.minDistance = 0.1;
+      controls.maxDistance = 15;
 
-        // --- PARTICLES ---
-        const particlesCount = 6000;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particlesCount * 3);
-        const randomness = new Float32Array(particlesCount * 3);
+      // --- RAYCASTER ---
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(999, 999);
+      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+      const target3D = new THREE.Vector3(999, 999, 999);
 
-        for (let i = 0; i < particlesCount; i++) {
-            const i3 = i * 3;
-            const r = 1.8 * Math.cbrt(Math.random()); 
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
+      // --- PARTICLES ---
+      const particlesCount = 7000;
+      const geometry = new THREE.BufferGeometry();
 
-            positions[i3]     = r * Math.sin(phi) * Math.cos(theta);
-            positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-            positions[i3 + 2] = r * Math.cos(phi);
+      const positions = new Float32Array(particlesCount * 3);
+      const originalPos = new Float32Array(particlesCount * 3);
+      const randomness = new Float32Array(particlesCount * 3);
 
-            randomness[i3] = Math.random();
-            randomness[i3 + 1] = Math.random();
-            randomness[i3 + 2] = Math.random();
-        }
+      for (let i = 0; i < particlesCount; i++) {
+        const i3 = i * 3;
+        const r = 1.8 * Math.cbrt(Math.random());
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('aRandom', new THREE.BufferAttribute(randomness, 3));
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
 
-        // --- SHADERS WITH MAGNETIC LOGIC ---
-        const vertexShader = `
+        positions[i3] = x;
+        positions[i3 + 1] = y;
+        positions[i3 + 2] = z;
+        originalPos[i3] = x;
+        originalPos[i3 + 1] = y;
+        originalPos[i3 + 2] = z;
+        randomness[i3] = Math.random();
+        randomness[i3 + 1] = Math.random();
+        randomness[i3 + 2] = Math.random();
+      }
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+      geometry.setAttribute(
+        "aOriginalPos",
+        new THREE.BufferAttribute(originalPos, 3)
+      );
+      geometry.setAttribute(
+        "aRandom",
+        new THREE.BufferAttribute(randomness, 3)
+      );
+
+      // --- SHADERS ---
+
+      const vertexShader = `
             uniform float uTime;
-            uniform vec3 uMouse3D; /* New Uniform: The 3D coordinate of the mouse */
+            uniform vec3 uBlackHolePos;
+            uniform float uMouseActive;
+
+            // NOTE: 'attribute vec3 position' is added AUTOMATICALLY by Three.js
+            // We do NOT declare it here to avoid crashes.
             
+            attribute vec3 aOriginalPos;
             attribute vec3 aRandom;
+            
             varying vec3 vPosition;
             varying float vDistance;
+            varying float vBHInfluence;
 
             void main() {
-                vec3 newPos = position;
-                float time = uTime * 1.5;
+                vec3 newPos = aOriginalPos;
+                float time = uTime * 1.0;
 
-                // 1. Standard Fluid Wave Distortion
-                newPos.x += sin(time * aRandom.x + newPos.y * 1.5) * 0.03;
-                newPos.y += cos(time * aRandom.y + newPos.z * 1.5) * 0.03;
-                newPos.z += sin(time * aRandom.z + newPos.x * 1.5) * 0.03;
-                
-                // 2. MAGNETIC ATTRACTION LOGIC
-                // Calculate distance between this particle and the mouse
-                float distToMouse = distance(newPos, uMouse3D);
-                
-                // Define the range of the magnet (radius)
-                float magnetRange = 1.2; 
+                // Fluid Motion
+                newPos.x += sin(time * aRandom.x + newPos.y * 1.5) * 0.04;
+                newPos.y += cos(time * aRandom.y + newPos.z * 1.5) * 0.04;
+                newPos.z += sin(time * aRandom.z + newPos.x * 1.5) * 0.04;
 
-                if(distToMouse < magnetRange){
-                    // Calculate a pull factor (1.0 at center, 0.0 at edge)
-                    float pull = 1.0 - (distToMouse / magnetRange);
+                // Black Hole Logic
+                float dist = distance(newPos, uBlackHolePos);
+                float radius = 1.8; 
+                
+                vBHInfluence = 0.0;
+
+                if(uMouseActive > 0.5 && dist < radius) {
+                    float influence = 1.0 - (dist / radius);
+                    influence = pow(influence, 2.0); // Power curve
+                    vBHInfluence = influence;
+
+                    vec3 dir = normalize(uBlackHolePos - newPos);
                     
-                    // Smoother falloff
-                    pull = pow(pull, 2.0); 
+                    // Strong Pull
+                    newPos += dir * influence * 1.2; 
 
-                    // Calculate direction towards mouse
-                    vec3 direction = normalize(uMouse3D - newPos);
-
-                    // Apply movement: "Very slight" strength (0.3)
-                    newPos += direction * pull * 0.5; 
+                    // Swirl
+                    vec3 axis = vec3(0.0, 1.0, 0.0);
+                    vec3 tangent = cross(dir, axis);
+                    newPos += tangent * influence * 0.4;
                 }
 
                 vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
+                
                 vPosition = newPos;
                 vDistance = length(newPos);
-
-                gl_PointSize = (22.0 / -mvPosition.z);
+                
+                // Size
+                gl_PointSize = (25.0 / -mvPosition.z);
             }
         `;
 
-        const fragmentNormal = `
+      const fragmentNormal = `
             varying vec3 vPosition;
             varying float vDistance;
+            varying float vBHInfluence;
+
             void main() {
                 float strength = distance(gl_PointCoord, vec2(0.5));
                 if(strength > 0.5) discard;
 
-                vec3 colorCore = vec3(1.0, 0.8, 0.4); 
-                vec3 colorRose = vec3(0.8, 0.1, 0.5); 
-                vec3 colorPurple = vec3(0.4, 0.0, 0.8);
-                vec3 colorBlue = vec3(0.0, 0.1, 0.5);
+                // Colors
+                vec3 cCore = vec3(1.0, 0.9, 0.5);
+                vec3 cMid = vec3(0.8, 0.1, 0.6);
+                vec3 cPole = vec3(0.0, 0.1, 0.5);
 
-                vec3 color = mix(colorRose, colorPurple, 0.5);
-                float poleFactor = smoothstep(0.6, 1.8, abs(vPosition.y));
-                color = mix(color, colorBlue, poleFactor);
+                vec3 finalColor = mix(cMid, cPole, smoothstep(0.5, 1.5, abs(vPosition.y)));
+                float coreF = 1.0 - smoothstep(0.0, 1.2, vDistance);
+                finalColor = mix(finalColor, cCore, coreF);
+
+                // --- PITCH BLACK ABSORPTION ---
+                // If influence is high, color becomes 0.0 (Black)
+                // We use smoothstep for a slightly soft edge, but very dark
+                float blackHoleFactor = smoothstep(0.0, 0.4, vBHInfluence);
                 
-                float coreFactor = 1.0 - smoothstep(0.0, 1.2, vDistance);
-                color = mix(color, colorCore, coreFactor * 0.6);
+                finalColor = mix(finalColor, vec3(0.0), blackHoleFactor); // Mix towards black
 
                 float alpha = (0.5 - strength) * 2.0;
-                gl_FragColor = vec4(color, alpha);
+                
+                // If fully absorbed, alpha goes to 0
+                alpha *= (1.0 - blackHoleFactor);
+
+                gl_FragColor = vec4(finalColor, alpha);
             }
         `;
 
-        const fragmentBloom = `
+      const fragmentBloom = `
             varying vec3 vPosition;
             varying float vDistance;
+            varying float vBHInfluence;
+
             void main() {
                 float strength = distance(gl_PointCoord, vec2(0.5));
                 if(strength > 0.5) discard;
 
-                vec3 bloomColor = vec3(10.0, 4.0, 1.0); 
-                float coreFactor = 1.0 - smoothstep(0.0, 0.8, vDistance); 
-                if(coreFactor < 0.01) discard; 
+                vec3 bloomColor = vec3(8.0, 3.0, 1.0);
+                float coreF = 1.0 - smoothstep(0.0, 0.8, vDistance);
 
-                gl_FragColor = vec4(bloomColor, (0.5 - strength) * coreFactor);
+                if(coreF < 0.05) discard;
+                
+                // Black Hole eats bloom aggressively
+                if(vBHInfluence > 0.1) discard;
+
+                gl_FragColor = vec4(bloomColor, (0.5 - strength) * coreF);
             }
         `;
 
-        // --- MATERIALS (Now including uMouse3D) ---
-        const uniforms = {
-            uTime: { value: 0 },
-            uMouse3D: { value: new THREE.Vector3(99, 99, 99) } // Initialize far away
-        };
+      const uniforms = {
+        uTime: { value: 0 },
+        uBlackHolePos: { value: new THREE.Vector3(999, 999, 999) },
+        uMouseActive: { value: 0.0 },
+      };
 
-        const materialNormal = new THREE.ShaderMaterial({
-            vertexShader, fragmentShader: fragmentNormal,
-            uniforms: uniforms, // Shared uniforms
-            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
-        });
+      const materialNormal = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader: fragmentNormal,
+        uniforms,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
 
-        const materialBloom = new THREE.ShaderMaterial({
-            vertexShader, fragmentShader: fragmentBloom,
-            uniforms: uniforms, // Shared uniforms
-            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
-        });
+      const materialBloom = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader: fragmentBloom,
+        uniforms,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
 
-        const particles = new THREE.Points(geometry, materialNormal);
-        scene.add(particles);
+      const particles = new THREE.Points(geometry, materialNormal);
+      scene.add(particles);
 
-        // --- COMPOSER SETUP ---
-        const renderTarget = new THREE.WebGLRenderTarget(
-            window.innerWidth, window.innerHeight, 
-            { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat }
-        );
-        
-        const bloomComposer = new EffectComposer(renderer, renderTarget);
-        bloomComposer.renderToScreen = false;
-        bloomComposer.addPass(new RenderPass(scene, camera));
-        
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        bloomPass.threshold = 0;
-        bloomPass.strength = 2.5;
-        bloomPass.radius = 0.5;
-        bloomComposer.addPass(bloomPass);
+      // --- COMPOSER ---
+      const renderTarget = new THREE.WebGLRenderTarget(
+        window.innerWidth,
+        window.innerHeight,
+        {
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          format: THREE.RGBAFormat,
+        }
+      );
 
-        const finalComposer = new EffectComposer(renderer);
-        finalComposer.addPass(new RenderPass(scene, camera));
+      const bloomComposer = new EffectComposer(renderer, renderTarget);
+      bloomComposer.renderToScreen = false;
+      bloomComposer.addPass(new RenderPass(scene, camera));
 
-        const mixPass = new ShaderPass(
-            new THREE.ShaderMaterial({
-                uniforms: {
-                    baseTexture: { value: null },
-                    bloomTexture: { value: renderTarget.texture }
-                },
-                vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-                fragmentShader: `
-                    uniform sampler2D baseTexture;
-                    uniform sampler2D bloomTexture;
-                    varying vec2 vUv;
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        1.5,
+        0.4,
+        0.85
+      );
+      bloomPass.threshold = 0;
+      bloomPass.strength = 2.5;
+      bloomPass.radius = 0.5;
+      bloomComposer.addPass(bloomPass);
+
+      const finalComposer = new EffectComposer(renderer);
+      finalComposer.addPass(new RenderPass(scene, camera));
+
+      const mixPass = new ShaderPass(
+        new THREE.ShaderMaterial({
+          uniforms: {
+            baseTexture: { value: null },
+            bloomTexture: { value: renderTarget.texture },
+          },
+          vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+          fragmentShader: `
+                    uniform sampler2D baseTexture; uniform sampler2D bloomTexture; varying vec2 vUv;
                     void main() {
                         vec4 base = texture2D(baseTexture, vUv);
                         vec4 bloom = texture2D(bloomTexture, vUv);
                         gl_FragColor = base + bloom; 
                     }
-                `
-            }), "baseTexture"
-        );
-        finalComposer.addPass(mixPass);
+                `,
+        }),
+        "baseTexture"
+      );
+      finalComposer.addPass(mixPass);
 
-        // --- EVENT LISTENERS ---
-        
-        // We need to calculate the 3D position of the mouse
-        document.addEventListener('mousemove', (event) => {
-            // 1. Get standard screen coordinates (-1 to +1)
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      // --- EVENTS ---
+      document.addEventListener("mousemove", (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        raycaster.ray.intersectPlane(plane, target3D);
+        uniforms.uBlackHolePos.value.copy(target3D);
+        uniforms.uMouseActive.value = 1.0;
+      });
+      document.addEventListener("mouseleave", () => {
+        uniforms.uMouseActive.value = 0.0;
+        uniforms.uBlackHolePos.value.set(999, 999, 999);
+      });
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        finalComposer.setSize(window.innerWidth, window.innerHeight);
+      });
 
-            // 2. Update the raycaster
-            raycaster.setFromCamera(mouse, camera);
+      // --- ANIMATION ---
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        const elapsed = clock.getElapsedTime();
+        uniforms.uTime.value = elapsed;
+        controls.update();
+        particles.rotation.y = elapsed * 0.05;
 
-            // 3. Find where the ray intersects a mathematical plane Z=0
-            // This gives us a 3D point in the "middle" of the sphere
-            raycaster.ray.intersectPlane(plane, target3D);
+        particles.material = materialBloom;
+        bloomComposer.render();
 
-            // 4. Update uniform
-            if(target3D) {
-                uniforms.uMouse3D.value.copy(target3D);
-            }
-        });
-
-        // --- ANIMATION ---
-        const clock = new THREE.Clock();
-
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            const elapsed = clock.getElapsedTime();
-            controls.update();
-
-            // Update Time Uniform
-            uniforms.uTime.value = elapsed;
-            
-            // Idle Rotation
-            particles.rotation.y = elapsed * 0.05;
-
-            // 1. Bloom Pass
-            particles.material = materialBloom;
-            bloomComposer.render();
-
-            // 2. Final Pass
-            particles.material = materialNormal;
-            finalComposer.render();
-        }
-
-        animate();
-
-        // --- RESIZE ---
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            bloomComposer.setSize(window.innerWidth, window.innerHeight);
-            finalComposer.setSize(window.innerWidth, window.innerHeight);
-        });
-
+        particles.material = materialNormal;
+        finalComposer.render();
+      }
+      animate();
     </script>
-</body>
+  </body>
 </html>
